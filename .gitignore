@@ -1,0 +1,5 @@
+# Deploy Branch
+*
+!.gitignore
+!index.html
+!assets/
