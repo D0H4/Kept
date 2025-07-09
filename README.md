@@ -1,3 +1,0 @@
-# Kept
-Keep, Kept, Kept
----
