@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -16,9 +17,25 @@ var (
 	mu   sync.RWMutex
 )
 
+// 환경 변수 가져오기 함수
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
 func dbConnect() (*sql.DB, error) {
+	// 환경 변수에서 데이터베이스 설정 가져오기
+	dbHost := getEnv("DB_HOST", "localhost")
+	dbPort := getEnv("DB_PORT", "3306")
+	dbUser := getEnv("DB_USER", "root")
+	dbPassword := getEnv("DB_PASSWORD", "1234")
+	dbName := getEnv("DB_NAME", "kept")
+
 	// Database connection string
-	dsn := "root:1234@tcp(localhost:3306)/kept?parseTime=true&charset=utf8mb4"
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&charset=utf8mb4&collation=utf8mb4_unicode_ci",
+		dbUser, dbPassword, dbHost, dbPort, dbName)
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {

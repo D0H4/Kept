@@ -4,6 +4,23 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'Oxygen',
+          'Ubuntu',
+          'Cantarell',
+          'Fira Sans',
+          'Droid Sans',
+          'Helvetica Neue',
+          'Malgun Gothic',
+          '맑은 고딕',
+          'sans-serif',
+        ],
+      },
       animation: {
         'fade-in': 'fadeIn 0.2s ease-in-out',
         'slide-up': 'slideUp 0.3s ease-out',

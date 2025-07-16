@@ -4,6 +4,9 @@ import { Note, UndoRedoAction } from '../types';
 const STORAGE_KEY = 'google-keep-notes';
 const HISTORY_KEY = 'google-keep-history';
 
+// API 기본 URL 설정
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
 export const useNotes = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [history, setHistory] = useState<UndoRedoAction[]>([]);
@@ -11,7 +14,7 @@ export const useNotes = () => {
 
   // Load notes from API
   useEffect(() => {
-    fetch('http://localhost:6727/')
+    fetch(`${API_BASE_URL}/`)
       .then(res => res.json())
       .then((data) => {
         // Convert date strings to Date objects
@@ -45,7 +48,7 @@ export const useNotes = () => {
 
   // Create memo (POST /memo)
   const createNote = useCallback(async (noteData: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const res = await fetch('http://localhost:6727/memo', {
+    const res = await fetch(`${API_BASE_URL}/memo`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(noteData)
@@ -67,7 +70,7 @@ export const useNotes = () => {
     const note = notes.find(n => n.id === id);
     if (!note) return;
     const updatedNote = { ...note, ...updates, updatedAt: new Date() };
-    await fetch(`http://localhost:6727/memo/${id}`, {
+    await fetch(`${API_BASE_URL}/memo/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updatedNote)
@@ -80,14 +83,14 @@ export const useNotes = () => {
   const deleteNote = useCallback(async (id: string) => {
     const noteToDelete = notes.find(note => note.id === id);
     if (!noteToDelete) return;
-    await fetch(`http://localhost:6727/memo/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/memo/${id}`, { method: 'DELETE' });
     setNotes(prev => prev.filter(note => note.id !== id));
     addToHistory({ type: 'delete', note: noteToDelete });
   }, [addToHistory, notes]);
 
   // Load trash list
   const fetchTrash = useCallback(async () => {
-    const res = await fetch('http://localhost:6727/trash');
+    const res = await fetch(`${API_BASE_URL}/trash`);
     const data = await res.json();
     return data.map((note: any) => ({
       ...note,
@@ -101,12 +104,12 @@ export const useNotes = () => {
 
   // Restore memo (PATCH /memo/:id/restore)
   const restoreNote = useCallback(async (id: string) => {
-    await fetch(`http://localhost:6727/memo/${id}/restore`, { method: 'PATCH' });
+    await fetch(`${API_BASE_URL}/memo/${id}/restore`, { method: 'PATCH' });
   }, []);
 
   // Permanently delete memos older than 7 days (DELETE /trash/permanent)
   const permanentlyDeleteOldMemos = useCallback(async () => {
-    await fetch('http://localhost:6727/trash/permanent', { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/trash/permanent`, { method: 'DELETE' });
   }, []);
 
   const togglePin = useCallback((id: string) => {

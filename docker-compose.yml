@@ -1,0 +1,63 @@
+# Docker Compose 버전 (최신 버전에서는 자동으로 감지됨)
+
+services:
+  # MySQL 데이터베이스
+  mysql:
+    image: mysql:8.0
+    container_name: kept-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: kept
+      MYSQL_USER: kept_user
+      MYSQL_PASSWORD: kept_password
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "4087:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/setup.sql:/docker-entrypoint-initdb.d/setup.sql
+    networks:
+      - kept-network
+
+  # Go 백엔드
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kept-backend
+    restart: unless-stopped
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=1234
+      - DB_NAME=kept
+    ports:
+      - "6727:6727"
+    depends_on:
+      - mysql
+    networks:
+      - kept-network
+
+  # React 프론트엔드
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kept-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - kept-network
+
+volumes:
+  mysql_data:
+
+networks:
+  kept-network:
+    driver: bridge 

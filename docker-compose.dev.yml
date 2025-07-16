@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # MySQL 데이터베이스
+  mysql:
+    image: mysql:8.0
+    container_name: kept-mysql-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: kept
+      MYSQL_USER: kept_user
+      MYSQL_PASSWORD: kept_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data_dev:/var/lib/mysql
+      - ./backend/setup.sql:/docker-entrypoint-initdb.d/setup.sql
+    networks:
+      - kept-network-dev
+
+  # Go 백엔드 (개발 모드)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: kept-backend-dev
+    restart: unless-stopped
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=1234
+      - DB_NAME=kept
+    ports:
+      - "6727:6727"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - mysql
+    networks:
+      - kept-network-dev
+
+  # React 프론트엔드 (개발 모드)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: kept-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - backend
+    networks:
+      - kept-network-dev
+
+volumes:
+  mysql_data_dev:
+
+networks:
+  kept-network-dev:
+    driver: bridge 
