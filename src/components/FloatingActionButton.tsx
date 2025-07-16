@@ -2,7 +2,7 @@ import React from 'react';
 import { Plus } from 'lucide-react';
 
 interface FloatingActionButtonProps {
-  onClick: () => void;
+  onClick: () => void | Promise<void>;
 }
 
 export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({ onClick }) => {

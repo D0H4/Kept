@@ -8,6 +8,7 @@ import { Header } from './components/Header';
 import { NotesGrid } from './components/NotesGrid';
 import { NoteEditor } from './components/NoteEditor';
 import { FloatingActionButton } from './components/FloatingActionButton';
+import { TrashView } from './components/TrashView';
 
 const App: React.FC = () => {
   const {
@@ -20,13 +21,17 @@ const App: React.FC = () => {
     undo,
     redo,
     canUndo,
-    canRedo
+    canRedo,
+    fetchTrash,
+    restoreNote,
+    permanentlyDeleteOldMemos
   } = useNotes();
 
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
 
-  const handleCreateNote = useCallback(() => {
-    const newNote = createNote({
+  const handleCreateNote = useCallback(async () => {
+    const newNote = await createNote({
       title: '',
       content: '',
       color: 'default',
@@ -58,6 +63,22 @@ const App: React.FC = () => {
     setEditingNote(null);
   }, []);
 
+  const handleOpenTrash = useCallback(() => {
+    setShowTrash(true);
+  }, []);
+
+  const handleCloseTrash = useCallback(() => {
+    setShowTrash(false);
+  }, []);
+
+  const handleRestoreNote = useCallback(async (id: string) => {
+    await restoreNote(id);
+  }, [restoreNote]);
+
+  const handlePermanentlyDeleteNote = useCallback(async (id: string) => {
+    await permanentlyDeleteOldMemos();
+  }, [permanentlyDeleteOldMemos]);
+
   const focusSearch = useCallback(() => {
     const searchInput = document.querySelector('input[type="text"]') as HTMLInputElement;
     searchInput?.focus();
@@ -81,31 +102,43 @@ const App: React.FC = () => {
             onRedo={redo}
             canUndo={canUndo}
             canRedo={canRedo}
+            onOpenTrash={handleOpenTrash}
           />
           
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <NotesGrid
-              notes={notes}
-              searchTerm=""
-              onEditNote={handleEditNote}
-              onDeleteNote={handleDeleteNote}
-              onTogglePin={togglePin}
-              onToggleArchive={toggleArchive}
-              onColorChange={handleColorChange}
+          {showTrash ? (
+            <TrashView
+              onBack={handleCloseTrash}
+              onRestore={handleRestoreNote}
+              onPermanentlyDelete={handlePermanentlyDeleteNote}
+              fetchTrash={fetchTrash}
             />
-          </main>
+          ) : (
+            <>
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <NotesGrid
+                  notes={notes}
+                  searchTerm=""
+                  onEditNote={handleEditNote}
+                  onDeleteNote={handleDeleteNote}
+                  onTogglePin={togglePin}
+                  onToggleArchive={toggleArchive}
+                  onColorChange={handleColorChange}
+                />
+              </main>
 
-          <FloatingActionButton onClick={handleCreateNote} />
+              <FloatingActionButton onClick={handleCreateNote} />
 
-          {editingNote && (
-            <NoteEditor
-              note={editingNote}
-              onSave={handleSaveNote}
-              onDelete={handleDeleteNote}
-              onClose={handleCloseEditor}
-              onTogglePin={togglePin}
-              onToggleArchive={toggleArchive}
-            />
+              {editingNote && (
+                <NoteEditor
+                  note={editingNote}
+                  onSave={handleSaveNote}
+                  onDelete={handleDeleteNote}
+                  onClose={handleCloseEditor}
+                  onTogglePin={togglePin}
+                  onToggleArchive={toggleArchive}
+                />
+              )}
+            </>
           )}
         </div>
       </SearchProvider>

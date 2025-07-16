@@ -9,21 +9,24 @@ export const useNotes = () => {
   const [history, setHistory] = useState<UndoRedoAction[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  // Load notes from localStorage
+  // Load notes from API
   useEffect(() => {
-    const savedNotes = localStorage.getItem(STORAGE_KEY);
-    if (savedNotes) {
-      try {
-        const parsedNotes = JSON.parse(savedNotes).map((note: any) => ({
+    fetch('http://localhost:6727/')
+      .then(res => res.json())
+      .then((data) => {
+        // Convert date strings to Date objects
+        const parsedNotes = data.map((note: any) => ({
           ...note,
+          id: note.id.toString(),
           createdAt: new Date(note.createdAt),
-          updatedAt: new Date(note.updatedAt)
+          updatedAt: new Date(note.updatedAt),
+          color: note.color || 'default', // default value if color field is missing
         }));
         setNotes(parsedNotes);
-      } catch (error) {
-        console.error('Error parsing notes from localStorage:', error);
-      }
-    }
+      })
+      .catch((error) => {
+        console.error('Failed to load notes:', error);
+      });
   }, []);
 
   // Save notes to localStorage
@@ -40,40 +43,71 @@ export const useNotes = () => {
     setHistoryIndex(prev => prev + 1);
   }, [historyIndex]);
 
-  const createNote = useCallback((noteData: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => {
+  // Create memo (POST /memo)
+  const createNote = useCallback(async (noteData: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const res = await fetch('http://localhost:6727/memo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(noteData)
+    });
+    const { id } = await res.json();
     const newNote: Note = {
       ...noteData,
-      id: Date.now().toString(),
+      id: id.toString(),
       createdAt: new Date(),
       updatedAt: new Date()
     };
-
     setNotes(prev => [newNote, ...prev]);
     addToHistory({ type: 'create', note: newNote });
     return newNote;
   }, [addToHistory]);
 
-  const updateNote = useCallback((id: string, updates: Partial<Note>) => {
-    setNotes(prev => prev.map(note => {
-      if (note.id === id) {
-        const previousNote = { ...note };
-        const updatedNote = { ...note, ...updates, updatedAt: new Date() };
-        addToHistory({ type: 'update', note: updatedNote, previousNote });
-        return updatedNote;
-      }
-      return note;
-    }));
-  }, [addToHistory]);
-
-  const deleteNote = useCallback((id: string) => {
-    setNotes(prev => {
-      const noteToDelete = prev.find(note => note.id === id);
-      if (noteToDelete) {
-        addToHistory({ type: 'delete', note: noteToDelete });
-      }
-      return prev.filter(note => note.id !== id);
+  // Update memo (PUT /memo/:id)
+  const updateNote = useCallback(async (id: string, updates: Partial<Note>) => {
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+    const updatedNote = { ...note, ...updates, updatedAt: new Date() };
+    await fetch(`http://localhost:6727/memo/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedNote)
     });
-  }, [addToHistory]);
+    setNotes(prev => prev.map(n => n.id === id ? updatedNote : n));
+    addToHistory({ type: 'update', note: updatedNote, previousNote: note });
+  }, [addToHistory, notes]);
+
+  // Delete memo (DELETE /memo/:id, move to trash)
+  const deleteNote = useCallback(async (id: string) => {
+    const noteToDelete = notes.find(note => note.id === id);
+    if (!noteToDelete) return;
+    await fetch(`http://localhost:6727/memo/${id}`, { method: 'DELETE' });
+    setNotes(prev => prev.filter(note => note.id !== id));
+    addToHistory({ type: 'delete', note: noteToDelete });
+  }, [addToHistory, notes]);
+
+  // Load trash list
+  const fetchTrash = useCallback(async () => {
+    const res = await fetch('http://localhost:6727/trash');
+    const data = await res.json();
+    return data.map((note: any) => ({
+      ...note,
+      id: note.id.toString(),
+      createdAt: new Date(note.createdAt),
+      updatedAt: new Date(note.updatedAt),
+      deletedAt: note.deletedAt ? new Date(note.deletedAt) : null,
+      color: note.color || 'default',
+    }));
+  }, []);
+
+  // Restore memo (PATCH /memo/:id/restore)
+  const restoreNote = useCallback(async (id: string) => {
+    await fetch(`http://localhost:6727/memo/${id}/restore`, { method: 'PATCH' });
+  }, []);
+
+  // Permanently delete memos older than 7 days (DELETE /trash/permanent)
+  const permanentlyDeleteOldMemos = useCallback(async () => {
+    await fetch('http://localhost:6727/trash/permanent', { method: 'DELETE' });
+  }, []);
 
   const togglePin = useCallback((id: string) => {
     updateNote(id, { isPinned: !notes.find(note => note.id === id)?.isPinned });
@@ -143,6 +177,9 @@ export const useNotes = () => {
     undo,
     redo,
     canUndo,
-    canRedo
+    canRedo,
+    fetchTrash,
+    restoreNote,
+    permanentlyDeleteOldMemos
   };
 };

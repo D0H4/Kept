@@ -5,6 +5,8 @@ export interface Note {
   color: string;
   isPinned: boolean;
   isArchived: boolean;
+  isDeleted?: boolean;
+  deletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
